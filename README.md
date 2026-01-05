@@ -13,9 +13,11 @@ Most progress trackers treat goals as flat lists. **Progress Cloud** treats them
 * Lists (movies, restaurants, books, etc.) can link directly to goals
 * Everything is visualized as nodes with vector connections
 
-Example:
+Examples:
 
-> “Watch 1 movie per month” → connected to a **Movies List** → individual movie items
+> "Watch 1 movie per month" → connected to a **Movies List** → individual movie items
+
+> "Run every day" → track miles run daily → view total monthly/yearly mileage → goal: "100 miles/month"
 
 ---
 
@@ -60,8 +62,16 @@ Example:
 
 * One-off tasks
 * Chained goals (Year → Month → Week → Day)
-* Goals don’t require strict correlation
+* Goals don't require strict correlation
   (e.g. yearly = 365 days, weekly = 5 days)
+* **Metrics tracking**: Attach measurable values to progress
+  * Distance (miles, kilometers)
+  * Time (minutes, hours)
+  * Count (reps, pages, etc.)
+  * Custom units
+* **Metric aggregation**: View totals across timeframes
+  * Daily entries roll up to weekly/monthly/yearly totals
+  * Set goals based on aggregate metrics (e.g. "100 miles this month")
 
 ### 2. Lists
 
@@ -104,6 +114,9 @@ Example:
 * description
 * timeframe (daily / weekly / monthly / yearly)
 * progress tracking rules
+* metricType (distance / time / count / custom / none)
+* metricUnit (miles / km / minutes / hours / reps / etc.)
+* metricTarget (optional goal value)
 
 **Goal**
 
@@ -111,6 +124,8 @@ Example:
 * name
 * optional timeframe
 * optional completion logic
+* metricType (optional)
+* metricTarget (e.g. "run 500 miles this year")
 
 **List**
 
@@ -135,14 +150,25 @@ Example:
 
 ## 🧭 User Flows
 
-### Example Flow
+### Example Flows
+
+**Flow 1: List-based Progress**
 
 1. User creates a **Movies list**
 2. Adds movies they want to watch
-3. Creates a task: *“Watch 1 movie per month”*
+3. Creates a task: *"Watch 1 movie per month"*
 4. Links the task to the Movies list
 5. Marks movies as watched → task progress updates
 6. Views everything in the cloud visualization
+
+**Flow 2: Metric-based Progress**
+
+1. User creates a task: *"Run daily"*
+2. Sets metric type to **distance** with unit **miles**
+3. Each day, logs run with mileage (e.g. 3.2 miles)
+4. Creates a monthly goal: *"Run 100 miles"*
+5. Links goal to the daily task
+6. Views daily entries, monthly total (85/100 miles), yearly total (450 miles)
 
 ---
 

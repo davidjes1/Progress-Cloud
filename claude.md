@@ -13,9 +13,12 @@ Unlike traditional progress trackers that use flat lists, Progress Cloud treats 
 - Goals can connect to other goals without strict hierarchies
 - Tasks can link to multiple goals
 - Lists (movies, restaurants, books) can drive progress
+- **Metrics** can be tracked and aggregated across timeframes
 - Everything is visualized as an interactive node graph
 
-Example workflow: "Watch 1 movie per month" (task) → "Movies List" → individual movie items
+Example workflows:
+- "Watch 1 movie per month" (task) → "Movies List" → individual movie items
+- "Run daily" → log miles/minutes → aggregate to monthly totals → "100 miles/month" goal
 
 ## Tech Stack
 
@@ -69,11 +72,23 @@ Relationships between nodes:
 - completion rules (count-based, boolean, streak)
 - progress state
 - can connect to multiple goals and list items
+- **metricType** (distance/time/count/custom/none)
+- **metricUnit** (miles, km, minutes, hours, reps, pages, etc.)
+- **metricTarget** (optional numeric goal)
 
 **Goal**
 - no enforced hierarchy
 - can overlap with other goals
 - can share tasks
+- **metricType** (optional - can inherit from tasks)
+- **metricTarget** (e.g., "500 miles this year")
+
+**MetricEntry** (NEW)
+- taskId (which task this belongs to)
+- timestamp (when the metric was logged)
+- metricValue (numeric value)
+- metricUnit (unit of measurement)
+- notes (optional context)
 
 **List & ListItem**
 - lists act as content collections
@@ -108,6 +123,9 @@ The project is in the planning/design phase. No Flutter code has been written ye
 - One-off tasks
 - Chained goals (Year → Month → Week → Day)
 - Goals with flexible correlation (e.g., yearly ≠ 365 days exactly)
+- **Metric tracking**: Tasks can track quantitative values
+- **Metric aggregation**: Daily entries roll up to weekly/monthly/yearly totals
+- **Metric-based goals**: Goals can have numeric targets (e.g., "100 miles/month")
 
 ### 2. Lists
 - Custom user-defined lists
@@ -120,6 +138,14 @@ The project is in the planning/design phase. No Flutter code has been written ye
 - Force-directed or manual node layout
 - Color-coded node types
 - Vector line connections
+- **Metric displays**: Show current values and progress percentages on nodes
+
+### 4. Metrics System (NEW)
+- **Metric types**: distance, time, count, custom
+- **Units**: miles, km, minutes, hours, reps, pages, etc.
+- **Aggregation**: SUM, AVERAGE, MAX, MIN
+- **Time-based rollups**: daily → weekly → monthly → yearly
+- **Progress tracking**: Compare actual vs. target metrics
 
 ## Progress Calculation
 
@@ -128,6 +154,32 @@ Progress is **contextual**, not global:
 - A task counts connected list item completions
 - Weekly goals may require 5 completions vs 365 for yearly
 - Logic lives in domain layer, not UI
+
+### Metric-Based Progress
+
+**Three Task Types:**
+1. **Boolean tasks**: Simple yes/no completion (e.g., "meditate daily")
+2. **Count tasks**: Track occurrences (e.g., "workout 3x per week")
+3. **Metric tasks**: Track measurable values (e.g., "run 5 miles daily")
+
+**Aggregation Examples:**
+
+Task: "Run daily" (3 miles target per day)
+- Daily: 3.2/3 miles (107%)
+- Weekly: 18.5/21 miles (88%)
+- Monthly: 92/90 miles (102%)
+- Yearly: 450/1095 miles (41%)
+
+Task: "Read 30 min/day"
+- Daily: 45/30 minutes (150%)
+- Weekly: 210/210 minutes (100%)
+- Monthly: 890/900 minutes (99%)
+
+**Aggregation Types:**
+- **SUM**: Total distance, time, count (default)
+- **AVERAGE**: Average pace, duration, etc.
+- **MAX**: Personal records
+- **MIN**: Minimum thresholds
 
 ## Visualization Layer
 
@@ -194,14 +246,21 @@ Progress is **contextual**, not global:
 lib/
   ├── domain/
   │   ├── models/
+  │   │   ├── task.dart
+  │   │   ├── goal.dart
+  │   │   ├── list.dart
+  │   │   ├── connection.dart
+  │   │   └── metric_entry.dart
   │   ├── repositories/
   │   └── services/
+  │       └── metric_aggregator.dart
   ├── ui/
   │   ├── screens/
   │   ├── widgets/
   │   └── painters/
   ├── state/
   └── persistence/
+      └── metric_entry_repository.dart
 ```
 
 ## Contributing Notes
@@ -216,6 +275,8 @@ When adding features, ask:
 3. How does this affect the visualization?
 4. Can this work offline?
 5. Is the domain logic separated from UI?
+6. **For metrics**: What unit of measurement? How should it aggregate? What's the target?
+7. **For metrics**: Should this be SUM, AVERAGE, MAX, or MIN aggregation?
 
 ## Useful Context
 
@@ -224,3 +285,6 @@ When adding features, ask:
 - Visual understanding > Data tables
 - Progress is contextual, not absolute
 - Lists are first-class citizens, not afterthoughts
+- **Metrics enable quantitative tracking** alongside qualitative progress
+- **Aggregation is hierarchical**: daily → weekly → monthly → yearly
+- **Units are flexible**: user can define custom units beyond built-in types
