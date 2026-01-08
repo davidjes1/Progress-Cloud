@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 /// Represents a visual node in the cloud
 class CloudNode {
@@ -88,7 +89,7 @@ class CloudPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     const gridSpacing = 50.0;
-    final gridSize = 2000.0;
+    const gridSize = 2000.0;
 
     // Vertical lines
     for (double x = -gridSize; x <= gridSize; x += gridSpacing) {
@@ -235,13 +236,13 @@ class CloudPainter extends CustomPainter {
   void _drawHexagon(Canvas canvas, CloudNode node, Paint paint, Paint borderPaint, Paint shadowPaint) {
     final path = Path();
     final radius = node.size / 2;
-    final angle = (2 * 3.14159) / 6;
+    const angle = (2 * 3.14159) / 6;
 
     for (int i = 0; i < 6; i++) {
       final angleInDegrees = 60.0 * i - 30.0;
       final angleInRadians = angleInDegrees * 3.14159 / 180;
-      final x = node.position.dx + radius * ui.cos(angleInRadians);
-      final y = node.position.dy + radius * ui.sin(angleInRadians);
+      final x = node.position.dx + radius * math.cos(angleInRadians);
+      final y = node.position.dy + radius * math.sin(angleInRadians);
 
       if (i == 0) {
         path.moveTo(x, y);

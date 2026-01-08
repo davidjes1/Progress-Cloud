@@ -1,12 +1,14 @@
-import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
+
+// Conditional imports for platform-specific database implementations
+import 'database_connection_stub.dart'
+    if (dart.library.io) 'database_connection_native.dart'
+    if (dart.library.html) 'database_connection_web.dart';
 
 part 'database.g.dart';
 
 // Tasks table
+@DataClassName('TaskData')
 class Tasks extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -27,6 +29,7 @@ class Tasks extends Table {
 }
 
 // Goals table
+@DataClassName('GoalData')
 class Goals extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -45,6 +48,7 @@ class Goals extends Table {
 }
 
 // Lists table
+@DataClassName('ProgressListData')
 class Lists extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -112,11 +116,7 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  static LazyDatabase _openConnection() {
-    return LazyDatabase(() async {
-      final dbFolder = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dbFolder.path, 'progress_cloud.db'));
-      return NativeDatabase(file);
-    });
+  static QueryExecutor _openConnection() {
+    return openConnection('progress_cloud');
   }
 }
