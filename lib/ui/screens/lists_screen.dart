@@ -3,6 +3,7 @@ import '../../domain/models/list.dart';
 import '../../persistence/database.dart' as db;
 import '../../persistence/list_repository_impl.dart';
 import 'list_form_screen.dart';
+import 'list_detail_screen.dart';
 
 class ListsScreen extends StatefulWidget {
   const ListsScreen({super.key});
@@ -61,6 +62,18 @@ class _ListsScreenState extends State<ListsScreen> {
     }
   }
 
+  Future<void> _navigateToDetail(ProgressList list) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ListDetailScreen(list: list),
+      ),
+    );
+
+    if (result == true) {
+      _loadLists();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,7 +115,11 @@ class _ListsScreenState extends State<ListsScreen> {
                       leading: const Icon(Icons.list_outlined),
                       title: Text(list.name),
                       subtitle: list.type != null ? Text(list.type!) : null,
-                      onTap: () => _navigateToForm(list: list),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => _navigateToForm(list: list),
+                      ),
+                      onTap: () => _navigateToDetail(list),
                     );
                   },
                 ),

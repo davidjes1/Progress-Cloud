@@ -23,6 +23,7 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
   MetricType? _selectedMetricType;
   String? _metricUnit;
   double? _metricTarget;
+  bool _autoCompleteEnabled = true;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
       _selectedMetricType = widget.goal!.metricType;
       _metricUnit = widget.goal!.metricUnit;
       _metricTarget = widget.goal!.metricTarget;
+      _autoCompleteEnabled = widget.goal!.autoCompleteEnabled;
     }
   }
 
@@ -57,6 +59,8 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
         metricType: _selectedMetricType,
         metricUnit: _metricUnit,
         metricTarget: _metricTarget,
+        isManuallyCompleted: widget.goal?.isManuallyCompleted ?? false,
+        autoCompleteEnabled: _autoCompleteEnabled,
         positionX: widget.goal?.positionX ?? 0.0,
         positionY: widget.goal?.positionY ?? 0.0,
         createdAt: widget.goal?.createdAt ?? now,
@@ -129,7 +133,7 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<Timeframe?>(
-              value: _selectedTimeframe,
+              initialValue: _selectedTimeframe,
               decoration: const InputDecoration(
                 labelText: 'Timeframe (optional)',
                 border: OutlineInputBorder(),
@@ -154,7 +158,7 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<MetricType?>(
-              value: _selectedMetricType,
+              initialValue: _selectedMetricType,
               decoration: const InputDecoration(
                 labelText: 'Metric Type (optional)',
                 border: OutlineInputBorder(),
@@ -206,6 +210,21 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
                 },
               ),
             ],
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Auto-complete'),
+              subtitle: const Text(
+                'Automatically mark goal as complete when all connected tasks are done',
+              ),
+              value: _autoCompleteEnabled,
+              onChanged: (value) {
+                setState(() {
+                  _autoCompleteEnabled = value;
+                });
+              },
+            ),
           ],
         ),
       ),

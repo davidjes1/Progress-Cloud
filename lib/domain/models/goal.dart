@@ -10,6 +10,8 @@ class Goal extends Equatable {
   final MetricType? metricType;
   final String? metricUnit;
   final double? metricTarget;
+  final bool isManuallyCompleted;
+  final bool autoCompleteEnabled;
   final double positionX;
   final double positionY;
   final DateTime createdAt;
@@ -23,6 +25,8 @@ class Goal extends Equatable {
     this.metricType,
     this.metricUnit,
     this.metricTarget,
+    this.isManuallyCompleted = false,
+    this.autoCompleteEnabled = true,
     this.positionX = 0.0,
     this.positionY = 0.0,
     required this.createdAt,
@@ -37,6 +41,8 @@ class Goal extends Equatable {
     MetricType? metricType,
     String? metricUnit,
     double? metricTarget,
+    bool? isManuallyCompleted,
+    bool? autoCompleteEnabled,
     double? positionX,
     double? positionY,
     DateTime? createdAt,
@@ -50,6 +56,8 @@ class Goal extends Equatable {
       metricType: metricType ?? this.metricType,
       metricUnit: metricUnit ?? this.metricUnit,
       metricTarget: metricTarget ?? this.metricTarget,
+      isManuallyCompleted: isManuallyCompleted ?? this.isManuallyCompleted,
+      autoCompleteEnabled: autoCompleteEnabled ?? this.autoCompleteEnabled,
       positionX: positionX ?? this.positionX,
       positionY: positionY ?? this.positionY,
       createdAt: createdAt ?? this.createdAt,
@@ -66,6 +74,8 @@ class Goal extends Equatable {
         metricType,
         metricUnit,
         metricTarget,
+        isManuallyCompleted,
+        autoCompleteEnabled,
         positionX,
         positionY,
         createdAt,

@@ -38,6 +38,8 @@ class Goals extends Table {
   IntColumn get metricType => integer().nullable()(); // MetricType enum index
   TextColumn get metricUnit => text().nullable()();
   RealColumn get metricTarget => real().nullable()();
+  BoolColumn get isManuallyCompleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get autoCompleteEnabled => boolean().withDefault(const Constant(true))();
   RealColumn get positionX => real().withDefault(const Constant(0.0))();
   RealColumn get positionY => real().withDefault(const Constant(0.0))();
   DateTimeColumn get createdAt => dateTime()();
@@ -64,6 +66,7 @@ class Lists extends Table {
 }
 
 // ListItems table
+@DataClassName('ListItemData')
 class ListItems extends Table {
   TextColumn get id => text()();
   TextColumn get listId => text()();
@@ -81,6 +84,7 @@ class ListItems extends Table {
 }
 
 // Connections table
+@DataClassName('ConnectionData')
 class Connections extends Table {
   TextColumn get id => text()();
   TextColumn get fromNodeId => text()();
@@ -114,7 +118,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onUpgrade: (migrator, from, to) async {
+        if (from < 2) {
+          // Migration from schema v1 to v2: Add completion fields to Goals table
+          await migrator.addColumn(goals, goals.isManuallyCompleted);
+          await migrator.addColumn(goals, goals.autoCompleteEnabled);
+        }
+      },
+    );
+  }
 
   static QueryExecutor _openConnection() {
     return openConnection('progress_cloud');

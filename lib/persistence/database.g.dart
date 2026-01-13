@@ -701,6 +701,26 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
   late final GeneratedColumn<double> metricTarget = GeneratedColumn<double>(
       'metric_target', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _isManuallyCompletedMeta =
+      const VerificationMeta('isManuallyCompleted');
+  @override
+  late final GeneratedColumn<bool> isManuallyCompleted = GeneratedColumn<bool>(
+      'is_manually_completed', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_manually_completed" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _autoCompleteEnabledMeta =
+      const VerificationMeta('autoCompleteEnabled');
+  @override
+  late final GeneratedColumn<bool> autoCompleteEnabled = GeneratedColumn<bool>(
+      'auto_complete_enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_complete_enabled" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _positionXMeta =
       const VerificationMeta('positionX');
   @override
@@ -738,6 +758,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
         metricType,
         metricUnit,
         metricTarget,
+        isManuallyCompleted,
+        autoCompleteEnabled,
         positionX,
         positionY,
         createdAt,
@@ -792,6 +814,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
           metricTarget.isAcceptableOrUnknown(
               data['metric_target']!, _metricTargetMeta));
     }
+    if (data.containsKey('is_manually_completed')) {
+      context.handle(
+          _isManuallyCompletedMeta,
+          isManuallyCompleted.isAcceptableOrUnknown(
+              data['is_manually_completed']!, _isManuallyCompletedMeta));
+    }
+    if (data.containsKey('auto_complete_enabled')) {
+      context.handle(
+          _autoCompleteEnabledMeta,
+          autoCompleteEnabled.isAcceptableOrUnknown(
+              data['auto_complete_enabled']!, _autoCompleteEnabledMeta));
+    }
     if (data.containsKey('position_x')) {
       context.handle(_positionXMeta,
           positionX.isAcceptableOrUnknown(data['position_x']!, _positionXMeta));
@@ -835,6 +869,10 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
           .read(DriftSqlType.string, data['${effectivePrefix}metric_unit']),
       metricTarget: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}metric_target']),
+      isManuallyCompleted: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}is_manually_completed'])!,
+      autoCompleteEnabled: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}auto_complete_enabled'])!,
       positionX: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}position_x'])!,
       positionY: attachedDatabase.typeMapping
@@ -860,6 +898,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
   final int? metricType;
   final String? metricUnit;
   final double? metricTarget;
+  final bool isManuallyCompleted;
+  final bool autoCompleteEnabled;
   final double positionX;
   final double positionY;
   final DateTime createdAt;
@@ -872,6 +912,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       this.metricType,
       this.metricUnit,
       this.metricTarget,
+      required this.isManuallyCompleted,
+      required this.autoCompleteEnabled,
       required this.positionX,
       required this.positionY,
       required this.createdAt,
@@ -896,6 +938,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
     if (!nullToAbsent || metricTarget != null) {
       map['metric_target'] = Variable<double>(metricTarget);
     }
+    map['is_manually_completed'] = Variable<bool>(isManuallyCompleted);
+    map['auto_complete_enabled'] = Variable<bool>(autoCompleteEnabled);
     map['position_x'] = Variable<double>(positionX);
     map['position_y'] = Variable<double>(positionY);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -922,6 +966,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       metricTarget: metricTarget == null && nullToAbsent
           ? const Value.absent()
           : Value(metricTarget),
+      isManuallyCompleted: Value(isManuallyCompleted),
+      autoCompleteEnabled: Value(autoCompleteEnabled),
       positionX: Value(positionX),
       positionY: Value(positionY),
       createdAt: Value(createdAt),
@@ -940,6 +986,10 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       metricType: serializer.fromJson<int?>(json['metricType']),
       metricUnit: serializer.fromJson<String?>(json['metricUnit']),
       metricTarget: serializer.fromJson<double?>(json['metricTarget']),
+      isManuallyCompleted:
+          serializer.fromJson<bool>(json['isManuallyCompleted']),
+      autoCompleteEnabled:
+          serializer.fromJson<bool>(json['autoCompleteEnabled']),
       positionX: serializer.fromJson<double>(json['positionX']),
       positionY: serializer.fromJson<double>(json['positionY']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -957,6 +1007,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       'metricType': serializer.toJson<int?>(metricType),
       'metricUnit': serializer.toJson<String?>(metricUnit),
       'metricTarget': serializer.toJson<double?>(metricTarget),
+      'isManuallyCompleted': serializer.toJson<bool>(isManuallyCompleted),
+      'autoCompleteEnabled': serializer.toJson<bool>(autoCompleteEnabled),
       'positionX': serializer.toJson<double>(positionX),
       'positionY': serializer.toJson<double>(positionY),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -972,6 +1024,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           Value<int?> metricType = const Value.absent(),
           Value<String?> metricUnit = const Value.absent(),
           Value<double?> metricTarget = const Value.absent(),
+          bool? isManuallyCompleted,
+          bool? autoCompleteEnabled,
           double? positionX,
           double? positionY,
           DateTime? createdAt,
@@ -985,6 +1039,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
         metricUnit: metricUnit.present ? metricUnit.value : this.metricUnit,
         metricTarget:
             metricTarget.present ? metricTarget.value : this.metricTarget,
+        isManuallyCompleted: isManuallyCompleted ?? this.isManuallyCompleted,
+        autoCompleteEnabled: autoCompleteEnabled ?? this.autoCompleteEnabled,
         positionX: positionX ?? this.positionX,
         positionY: positionY ?? this.positionY,
         createdAt: createdAt ?? this.createdAt,
@@ -1004,6 +1060,12 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       metricTarget: data.metricTarget.present
           ? data.metricTarget.value
           : this.metricTarget,
+      isManuallyCompleted: data.isManuallyCompleted.present
+          ? data.isManuallyCompleted.value
+          : this.isManuallyCompleted,
+      autoCompleteEnabled: data.autoCompleteEnabled.present
+          ? data.autoCompleteEnabled.value
+          : this.autoCompleteEnabled,
       positionX: data.positionX.present ? data.positionX.value : this.positionX,
       positionY: data.positionY.present ? data.positionY.value : this.positionY,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -1021,6 +1083,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           ..write('metricType: $metricType, ')
           ..write('metricUnit: $metricUnit, ')
           ..write('metricTarget: $metricTarget, ')
+          ..write('isManuallyCompleted: $isManuallyCompleted, ')
+          ..write('autoCompleteEnabled: $autoCompleteEnabled, ')
           ..write('positionX: $positionX, ')
           ..write('positionY: $positionY, ')
           ..write('createdAt: $createdAt, ')
@@ -1030,8 +1094,20 @@ class GoalData extends DataClass implements Insertable<GoalData> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, description, timeframe, metricType,
-      metricUnit, metricTarget, positionX, positionY, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      description,
+      timeframe,
+      metricType,
+      metricUnit,
+      metricTarget,
+      isManuallyCompleted,
+      autoCompleteEnabled,
+      positionX,
+      positionY,
+      createdAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1043,6 +1119,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           other.metricType == this.metricType &&
           other.metricUnit == this.metricUnit &&
           other.metricTarget == this.metricTarget &&
+          other.isManuallyCompleted == this.isManuallyCompleted &&
+          other.autoCompleteEnabled == this.autoCompleteEnabled &&
           other.positionX == this.positionX &&
           other.positionY == this.positionY &&
           other.createdAt == this.createdAt &&
@@ -1057,6 +1135,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
   final Value<int?> metricType;
   final Value<String?> metricUnit;
   final Value<double?> metricTarget;
+  final Value<bool> isManuallyCompleted;
+  final Value<bool> autoCompleteEnabled;
   final Value<double> positionX;
   final Value<double> positionY;
   final Value<DateTime> createdAt;
@@ -1070,6 +1150,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     this.metricType = const Value.absent(),
     this.metricUnit = const Value.absent(),
     this.metricTarget = const Value.absent(),
+    this.isManuallyCompleted = const Value.absent(),
+    this.autoCompleteEnabled = const Value.absent(),
     this.positionX = const Value.absent(),
     this.positionY = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1084,6 +1166,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     this.metricType = const Value.absent(),
     this.metricUnit = const Value.absent(),
     this.metricTarget = const Value.absent(),
+    this.isManuallyCompleted = const Value.absent(),
+    this.autoCompleteEnabled = const Value.absent(),
     this.positionX = const Value.absent(),
     this.positionY = const Value.absent(),
     required DateTime createdAt,
@@ -1101,6 +1185,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     Expression<int>? metricType,
     Expression<String>? metricUnit,
     Expression<double>? metricTarget,
+    Expression<bool>? isManuallyCompleted,
+    Expression<bool>? autoCompleteEnabled,
     Expression<double>? positionX,
     Expression<double>? positionY,
     Expression<DateTime>? createdAt,
@@ -1115,6 +1201,10 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
       if (metricType != null) 'metric_type': metricType,
       if (metricUnit != null) 'metric_unit': metricUnit,
       if (metricTarget != null) 'metric_target': metricTarget,
+      if (isManuallyCompleted != null)
+        'is_manually_completed': isManuallyCompleted,
+      if (autoCompleteEnabled != null)
+        'auto_complete_enabled': autoCompleteEnabled,
       if (positionX != null) 'position_x': positionX,
       if (positionY != null) 'position_y': positionY,
       if (createdAt != null) 'created_at': createdAt,
@@ -1131,6 +1221,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
       Value<int?>? metricType,
       Value<String?>? metricUnit,
       Value<double?>? metricTarget,
+      Value<bool>? isManuallyCompleted,
+      Value<bool>? autoCompleteEnabled,
       Value<double>? positionX,
       Value<double>? positionY,
       Value<DateTime>? createdAt,
@@ -1144,6 +1236,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
       metricType: metricType ?? this.metricType,
       metricUnit: metricUnit ?? this.metricUnit,
       metricTarget: metricTarget ?? this.metricTarget,
+      isManuallyCompleted: isManuallyCompleted ?? this.isManuallyCompleted,
+      autoCompleteEnabled: autoCompleteEnabled ?? this.autoCompleteEnabled,
       positionX: positionX ?? this.positionX,
       positionY: positionY ?? this.positionY,
       createdAt: createdAt ?? this.createdAt,
@@ -1176,6 +1270,12 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     if (metricTarget.present) {
       map['metric_target'] = Variable<double>(metricTarget.value);
     }
+    if (isManuallyCompleted.present) {
+      map['is_manually_completed'] = Variable<bool>(isManuallyCompleted.value);
+    }
+    if (autoCompleteEnabled.present) {
+      map['auto_complete_enabled'] = Variable<bool>(autoCompleteEnabled.value);
+    }
     if (positionX.present) {
       map['position_x'] = Variable<double>(positionX.value);
     }
@@ -1204,6 +1304,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
           ..write('metricType: $metricType, ')
           ..write('metricUnit: $metricUnit, ')
           ..write('metricTarget: $metricTarget, ')
+          ..write('isManuallyCompleted: $isManuallyCompleted, ')
+          ..write('autoCompleteEnabled: $autoCompleteEnabled, ')
           ..write('positionX: $positionX, ')
           ..write('positionY: $positionY, ')
           ..write('createdAt: $createdAt, ')
@@ -1635,7 +1737,7 @@ class ListsCompanion extends UpdateCompanion<ProgressListData> {
 }
 
 class $ListItemsTable extends ListItems
-    with TableInfo<$ListItemsTable, ListItem> {
+    with TableInfo<$ListItemsTable, ListItemData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1725,7 +1827,7 @@ class $ListItemsTable extends ListItems
   String get actualTableName => $name;
   static const String $name = 'list_items';
   @override
-  VerificationContext validateIntegrity(Insertable<ListItem> instance,
+  VerificationContext validateIntegrity(Insertable<ListItemData> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -1786,9 +1888,9 @@ class $ListItemsTable extends ListItems
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  ListItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ListItemData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return ListItem(
+    return ListItemData(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       listId: attachedDatabase.typeMapping
@@ -1818,7 +1920,7 @@ class $ListItemsTable extends ListItems
   }
 }
 
-class ListItem extends DataClass implements Insertable<ListItem> {
+class ListItemData extends DataClass implements Insertable<ListItemData> {
   final String id;
   final String listId;
   final String title;
@@ -1829,7 +1931,7 @@ class ListItem extends DataClass implements Insertable<ListItem> {
   final double positionY;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const ListItem(
+  const ListItemData(
       {required this.id,
       required this.listId,
       required this.title,
@@ -1874,10 +1976,10 @@ class ListItem extends DataClass implements Insertable<ListItem> {
     );
   }
 
-  factory ListItem.fromJson(Map<String, dynamic> json,
+  factory ListItemData.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return ListItem(
+    return ListItemData(
       id: serializer.fromJson<String>(json['id']),
       listId: serializer.fromJson<String>(json['listId']),
       title: serializer.fromJson<String>(json['title']),
@@ -1907,7 +2009,7 @@ class ListItem extends DataClass implements Insertable<ListItem> {
     };
   }
 
-  ListItem copyWith(
+  ListItemData copyWith(
           {String? id,
           String? listId,
           String? title,
@@ -1918,7 +2020,7 @@ class ListItem extends DataClass implements Insertable<ListItem> {
           double? positionY,
           DateTime? createdAt,
           DateTime? updatedAt}) =>
-      ListItem(
+      ListItemData(
         id: id ?? this.id,
         listId: listId ?? this.listId,
         title: title ?? this.title,
@@ -1930,8 +2032,8 @@ class ListItem extends DataClass implements Insertable<ListItem> {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
-  ListItem copyWithCompanion(ListItemsCompanion data) {
-    return ListItem(
+  ListItemData copyWithCompanion(ListItemsCompanion data) {
+    return ListItemData(
       id: data.id.present ? data.id.value : this.id,
       listId: data.listId.present ? data.listId.value : this.listId,
       title: data.title.present ? data.title.value : this.title,
@@ -1948,7 +2050,7 @@ class ListItem extends DataClass implements Insertable<ListItem> {
 
   @override
   String toString() {
-    return (StringBuffer('ListItem(')
+    return (StringBuffer('ListItemData(')
           ..write('id: $id, ')
           ..write('listId: $listId, ')
           ..write('title: $title, ')
@@ -1969,7 +2071,7 @@ class ListItem extends DataClass implements Insertable<ListItem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ListItem &&
+      (other is ListItemData &&
           other.id == this.id &&
           other.listId == this.listId &&
           other.title == this.title &&
@@ -1982,7 +2084,7 @@ class ListItem extends DataClass implements Insertable<ListItem> {
           other.updatedAt == this.updatedAt);
 }
 
-class ListItemsCompanion extends UpdateCompanion<ListItem> {
+class ListItemsCompanion extends UpdateCompanion<ListItemData> {
   final Value<String> id;
   final Value<String> listId;
   final Value<String> title;
@@ -2024,7 +2126,7 @@ class ListItemsCompanion extends UpdateCompanion<ListItem> {
         title = Value(title),
         createdAt = Value(createdAt),
         updatedAt = Value(updatedAt);
-  static Insertable<ListItem> custom({
+  static Insertable<ListItemData> custom({
     Expression<String>? id,
     Expression<String>? listId,
     Expression<String>? title,
@@ -2138,7 +2240,7 @@ class ListItemsCompanion extends UpdateCompanion<ListItem> {
 }
 
 class $ConnectionsTable extends Connections
-    with TableInfo<$ConnectionsTable, Connection> {
+    with TableInfo<$ConnectionsTable, ConnectionData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -2200,7 +2302,7 @@ class $ConnectionsTable extends Connections
   String get actualTableName => $name;
   static const String $name = 'connections';
   @override
-  VerificationContext validateIntegrity(Insertable<Connection> instance,
+  VerificationContext validateIntegrity(Insertable<ConnectionData> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -2253,9 +2355,9 @@ class $ConnectionsTable extends Connections
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Connection map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ConnectionData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Connection(
+    return ConnectionData(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       fromNodeId: attachedDatabase.typeMapping
@@ -2279,7 +2381,7 @@ class $ConnectionsTable extends Connections
   }
 }
 
-class Connection extends DataClass implements Insertable<Connection> {
+class ConnectionData extends DataClass implements Insertable<ConnectionData> {
   final String id;
   final String fromNodeId;
   final String toNodeId;
@@ -2287,7 +2389,7 @@ class Connection extends DataClass implements Insertable<Connection> {
   final String? direction;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const Connection(
+  const ConnectionData(
       {required this.id,
       required this.fromNodeId,
       required this.toNodeId,
@@ -2324,10 +2426,10 @@ class Connection extends DataClass implements Insertable<Connection> {
     );
   }
 
-  factory Connection.fromJson(Map<String, dynamic> json,
+  factory ConnectionData.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Connection(
+    return ConnectionData(
       id: serializer.fromJson<String>(json['id']),
       fromNodeId: serializer.fromJson<String>(json['fromNodeId']),
       toNodeId: serializer.fromJson<String>(json['toNodeId']),
@@ -2351,7 +2453,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     };
   }
 
-  Connection copyWith(
+  ConnectionData copyWith(
           {String? id,
           String? fromNodeId,
           String? toNodeId,
@@ -2359,7 +2461,7 @@ class Connection extends DataClass implements Insertable<Connection> {
           Value<String?> direction = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
-      Connection(
+      ConnectionData(
         id: id ?? this.id,
         fromNodeId: fromNodeId ?? this.fromNodeId,
         toNodeId: toNodeId ?? this.toNodeId,
@@ -2368,8 +2470,8 @@ class Connection extends DataClass implements Insertable<Connection> {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
-  Connection copyWithCompanion(ConnectionsCompanion data) {
-    return Connection(
+  ConnectionData copyWithCompanion(ConnectionsCompanion data) {
+    return ConnectionData(
       id: data.id.present ? data.id.value : this.id,
       fromNodeId:
           data.fromNodeId.present ? data.fromNodeId.value : this.fromNodeId,
@@ -2385,7 +2487,7 @@ class Connection extends DataClass implements Insertable<Connection> {
 
   @override
   String toString() {
-    return (StringBuffer('Connection(')
+    return (StringBuffer('ConnectionData(')
           ..write('id: $id, ')
           ..write('fromNodeId: $fromNodeId, ')
           ..write('toNodeId: $toNodeId, ')
@@ -2403,7 +2505,7 @@ class Connection extends DataClass implements Insertable<Connection> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Connection &&
+      (other is ConnectionData &&
           other.id == this.id &&
           other.fromNodeId == this.fromNodeId &&
           other.toNodeId == this.toNodeId &&
@@ -2413,7 +2515,7 @@ class Connection extends DataClass implements Insertable<Connection> {
           other.updatedAt == this.updatedAt);
 }
 
-class ConnectionsCompanion extends UpdateCompanion<Connection> {
+class ConnectionsCompanion extends UpdateCompanion<ConnectionData> {
   final Value<String> id;
   final Value<String> fromNodeId;
   final Value<String> toNodeId;
@@ -2447,7 +2549,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
         relationshipType = Value(relationshipType),
         createdAt = Value(createdAt),
         updatedAt = Value(updatedAt);
-  static Insertable<Connection> custom({
+  static Insertable<ConnectionData> custom({
     Expression<String>? id,
     Expression<String>? fromNodeId,
     Expression<String>? toNodeId,
@@ -3281,6 +3383,8 @@ typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<int?> metricType,
   Value<String?> metricUnit,
   Value<double?> metricTarget,
+  Value<bool> isManuallyCompleted,
+  Value<bool> autoCompleteEnabled,
   Value<double> positionX,
   Value<double> positionY,
   required DateTime createdAt,
@@ -3295,6 +3399,8 @@ typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<int?> metricType,
   Value<String?> metricUnit,
   Value<double?> metricTarget,
+  Value<bool> isManuallyCompleted,
+  Value<bool> autoCompleteEnabled,
   Value<double> positionX,
   Value<double> positionY,
   Value<DateTime> createdAt,
@@ -3330,6 +3436,14 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<double> get metricTarget => $composableBuilder(
       column: $table.metricTarget, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isManuallyCompleted => $composableBuilder(
+      column: $table.isManuallyCompleted,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get autoCompleteEnabled => $composableBuilder(
+      column: $table.autoCompleteEnabled,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get positionX => $composableBuilder(
       column: $table.positionX, builder: (column) => ColumnFilters(column));
@@ -3375,6 +3489,14 @@ class $$GoalsTableOrderingComposer
       column: $table.metricTarget,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isManuallyCompleted => $composableBuilder(
+      column: $table.isManuallyCompleted,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get autoCompleteEnabled => $composableBuilder(
+      column: $table.autoCompleteEnabled,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get positionX => $composableBuilder(
       column: $table.positionX, builder: (column) => ColumnOrderings(column));
 
@@ -3417,6 +3539,12 @@ class $$GoalsTableAnnotationComposer
 
   GeneratedColumn<double> get metricTarget => $composableBuilder(
       column: $table.metricTarget, builder: (column) => column);
+
+  GeneratedColumn<bool> get isManuallyCompleted => $composableBuilder(
+      column: $table.isManuallyCompleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoCompleteEnabled => $composableBuilder(
+      column: $table.autoCompleteEnabled, builder: (column) => column);
 
   GeneratedColumn<double> get positionX =>
       $composableBuilder(column: $table.positionX, builder: (column) => column);
@@ -3461,6 +3589,8 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<int?> metricType = const Value.absent(),
             Value<String?> metricUnit = const Value.absent(),
             Value<double?> metricTarget = const Value.absent(),
+            Value<bool> isManuallyCompleted = const Value.absent(),
+            Value<bool> autoCompleteEnabled = const Value.absent(),
             Value<double> positionX = const Value.absent(),
             Value<double> positionY = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -3475,6 +3605,8 @@ class $$GoalsTableTableManager extends RootTableManager<
             metricType: metricType,
             metricUnit: metricUnit,
             metricTarget: metricTarget,
+            isManuallyCompleted: isManuallyCompleted,
+            autoCompleteEnabled: autoCompleteEnabled,
             positionX: positionX,
             positionY: positionY,
             createdAt: createdAt,
@@ -3489,6 +3621,8 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<int?> metricType = const Value.absent(),
             Value<String?> metricUnit = const Value.absent(),
             Value<double?> metricTarget = const Value.absent(),
+            Value<bool> isManuallyCompleted = const Value.absent(),
+            Value<bool> autoCompleteEnabled = const Value.absent(),
             Value<double> positionX = const Value.absent(),
             Value<double> positionY = const Value.absent(),
             required DateTime createdAt,
@@ -3503,6 +3637,8 @@ class $$GoalsTableTableManager extends RootTableManager<
             metricType: metricType,
             metricUnit: metricUnit,
             metricTarget: metricTarget,
+            isManuallyCompleted: isManuallyCompleted,
+            autoCompleteEnabled: autoCompleteEnabled,
             positionX: positionX,
             positionY: positionY,
             createdAt: createdAt,
@@ -3893,14 +4029,17 @@ class $$ListItemsTableAnnotationComposer
 class $$ListItemsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $ListItemsTable,
-    ListItem,
+    ListItemData,
     $$ListItemsTableFilterComposer,
     $$ListItemsTableOrderingComposer,
     $$ListItemsTableAnnotationComposer,
     $$ListItemsTableCreateCompanionBuilder,
     $$ListItemsTableUpdateCompanionBuilder,
-    (ListItem, BaseReferences<_$AppDatabase, $ListItemsTable, ListItem>),
-    ListItem,
+    (
+      ListItemData,
+      BaseReferences<_$AppDatabase, $ListItemsTable, ListItemData>
+    ),
+    ListItemData,
     PrefetchHooks Function()> {
   $$ListItemsTableTableManager(_$AppDatabase db, $ListItemsTable table)
       : super(TableManagerState(
@@ -3974,14 +4113,17 @@ class $$ListItemsTableTableManager extends RootTableManager<
 typedef $$ListItemsTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $ListItemsTable,
-    ListItem,
+    ListItemData,
     $$ListItemsTableFilterComposer,
     $$ListItemsTableOrderingComposer,
     $$ListItemsTableAnnotationComposer,
     $$ListItemsTableCreateCompanionBuilder,
     $$ListItemsTableUpdateCompanionBuilder,
-    (ListItem, BaseReferences<_$AppDatabase, $ListItemsTable, ListItem>),
-    ListItem,
+    (
+      ListItemData,
+      BaseReferences<_$AppDatabase, $ListItemsTable, ListItemData>
+    ),
+    ListItemData,
     PrefetchHooks Function()>;
 typedef $$ConnectionsTableCreateCompanionBuilder = ConnectionsCompanion
     Function({
@@ -4104,14 +4246,17 @@ class $$ConnectionsTableAnnotationComposer
 class $$ConnectionsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $ConnectionsTable,
-    Connection,
+    ConnectionData,
     $$ConnectionsTableFilterComposer,
     $$ConnectionsTableOrderingComposer,
     $$ConnectionsTableAnnotationComposer,
     $$ConnectionsTableCreateCompanionBuilder,
     $$ConnectionsTableUpdateCompanionBuilder,
-    (Connection, BaseReferences<_$AppDatabase, $ConnectionsTable, Connection>),
-    Connection,
+    (
+      ConnectionData,
+      BaseReferences<_$AppDatabase, $ConnectionsTable, ConnectionData>
+    ),
+    ConnectionData,
     PrefetchHooks Function()> {
   $$ConnectionsTableTableManager(_$AppDatabase db, $ConnectionsTable table)
       : super(TableManagerState(
@@ -4173,14 +4318,17 @@ class $$ConnectionsTableTableManager extends RootTableManager<
 typedef $$ConnectionsTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $ConnectionsTable,
-    Connection,
+    ConnectionData,
     $$ConnectionsTableFilterComposer,
     $$ConnectionsTableOrderingComposer,
     $$ConnectionsTableAnnotationComposer,
     $$ConnectionsTableCreateCompanionBuilder,
     $$ConnectionsTableUpdateCompanionBuilder,
-    (Connection, BaseReferences<_$AppDatabase, $ConnectionsTable, Connection>),
-    Connection,
+    (
+      ConnectionData,
+      BaseReferences<_$AppDatabase, $ConnectionsTable, ConnectionData>
+    ),
+    ConnectionData,
     PrefetchHooks Function()>;
 typedef $$MetricEntriesTableCreateCompanionBuilder = MetricEntriesCompanion
     Function({
