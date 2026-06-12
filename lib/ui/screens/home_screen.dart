@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'cloud_view_screen.dart';
-import 'task_list_screen.dart';
-import 'goal_list_screen.dart';
+import 'bucket_list_screen.dart';
 import 'lists_screen.dart';
+import 'task_list_screen.dart';
+import 'cloud_view_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,10 +15,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   static const List<Widget> _screens = [
-    CloudViewScreen(),
-    TaskListScreen(),
-    GoalListScreen(),
+    BucketListScreen(),
     ListsScreen(),
+    TaskListScreen(),
+    CloudViewScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -36,24 +36,24 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: _onItemTapped,
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.cloud_outlined),
-            selectedIcon: Icon(Icons.cloud),
+            icon: Icon(Icons.star_border_rounded),
+            selectedIcon: Icon(Icons.star_rounded),
+            label: 'Bucket List',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.collections_bookmark_outlined),
+            selectedIcon: Icon(Icons.collections_bookmark),
+            label: 'Collections',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist),
+            label: 'Steps',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bubble_chart_outlined),
+            selectedIcon: Icon(Icons.bubble_chart),
             label: 'Cloud',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.task_outlined),
-            selectedIcon: Icon(Icons.task),
-            label: 'Tasks',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.flag_outlined),
-            selectedIcon: Icon(Icons.flag),
-            label: 'Goals',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.list_outlined),
-            selectedIcon: Icon(Icons.list),
-            label: 'Lists',
           ),
         ],
       ),

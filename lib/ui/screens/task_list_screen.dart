@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/task.dart';
+import '../../domain/models/enums.dart';
 import '../../persistence/database.dart' as db;
 import '../../persistence/task_repository_impl.dart';
+import '../../persistence/connection_repository_impl.dart';
 import 'task_form_screen.dart';
 import 'task_detail_screen.dart';
 
@@ -23,9 +25,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   Future<void> _loadTasks() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final database = db.AppDatabase();
     final repository = TaskRepositoryImpl(database);
@@ -37,12 +37,10 @@ class _TaskListScreenState extends State<TaskListScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading tasks: $e')),
+          SnackBar(content: Text('Error loading steps: $e')),
         );
       }
     } finally {
@@ -56,10 +54,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
         builder: (context) => TaskFormScreen(task: task),
       ),
     );
-
-    if (result == true) {
-      _loadTasks();
-    }
+    if (result == true) _loadTasks();
   }
 
   Future<void> _navigateToDetail(Task task) async {
@@ -68,27 +63,23 @@ class _TaskListScreenState extends State<TaskListScreen> {
         builder: (context) => TaskDetailScreen(task: task),
       ),
     );
-
-    if (result == true) {
-      _loadTasks();
-    }
+    if (result == true) _loadTasks();
   }
 
-  Future<void> _toggleTaskCompletion(Task task) async {
+  Future<void> _toggleCompletion(Task task) async {
     final database = db.AppDatabase();
     final repository = TaskRepositoryImpl(database);
 
     try {
-      final updatedTask = task.copyWith(
+      await repository.updateTask(task.copyWith(
         isCompleted: !task.isCompleted,
         updatedAt: DateTime.now(),
-      );
-      await repository.updateTask(updatedTask);
+      ));
       _loadTasks();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating task: $e')),
+          SnackBar(content: Text('Error updating step: $e')),
         );
       }
     } finally {
@@ -96,74 +87,217 @@ class _TaskListScreenState extends State<TaskListScreen> {
     }
   }
 
+  Future<void> _deleteTask(Task task) async {
+    final database = db.AppDatabase();
+    final taskRepo = TaskRepositoryImpl(database);
+    final connectionRepo = ConnectionRepositoryImpl(database);
+
+    try {
+      final connections = await connectionRepo.getConnectionsForNode(task.id);
+      for (final conn in connections) {
+        await connectionRepo.deleteConnection(conn.id);
+      }
+      await taskRepo.deleteTask(task.id);
+      _loadTasks();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting step: $e')),
+        );
+      }
+    } finally {
+      await database.close();
+    }
+  }
+
+  List<Task> get _sortedTasks {
+    final incomplete = _tasks.where((t) => !t.isCompleted).toList();
+    final complete = _tasks.where((t) => t.isCompleted).toList();
+    return [...incomplete, ...complete];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sorted = _sortedTasks;
+    final completedCount = _tasks.where((t) => t.isCompleted).length;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tasks'),
+        title: const Text('Steps'),
+        centerTitle: false,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _tasks.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.task_outlined,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No tasks yet',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tap the + button to create your first task',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ? _buildEmptyState()
+              : Column(
+                  children: [
+                    if (_tasks.isNotEmpty)
+                      Container(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        child: Row(
+                          children: [
+                            Text(
+                              '$completedCount of ${_tasks.length} done',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                             ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: _tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = _tasks[index];
-                    return ListTile(
-                      leading: IconButton(
-                        icon: Icon(
-                          task.isCompleted ? Icons.check_circle : Icons.circle_outlined,
-                          color: task.isCompleted ? Colors.green : null,
+                          ],
                         ),
-                        onPressed: () => _toggleTaskCompletion(task),
                       ),
-                      title: Text(
-                        task.title,
-                        style: task.isCompleted
-                            ? TextStyle(
-                                decoration: TextDecoration.lineThrough,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              )
-                            : null,
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _loadTasks,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: sorted.length,
+                          itemBuilder: (context, index) {
+                            final task = sorted[index];
+                            return _buildTaskTile(task);
+                          },
+                        ),
                       ),
-                      subtitle: Text(
-                        '${task.timeframe.name} • ${task.completionRuleType.name}',
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _navigateToForm(task: task),
-                      ),
-                      onTap: () => _navigateToDetail(task),
-                    );
-                  },
+                    ),
+                  ],
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToForm(),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildTaskTile(Task task) {
+    return Dismissible(
+      key: Key(task.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red.shade400,
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Step'),
+            content: Text('Delete "${task.title}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+      },
+      onDismissed: (_) => _deleteTask(task),
+      child: ListTile(
+        leading: IconButton(
+          icon: Icon(
+            task.isCompleted
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            color: task.isCompleted ? Colors.green : null,
+          ),
+          onPressed: () => _toggleCompletion(task),
+        ),
+        title: Text(
+          task.title,
+          style: task.isCompleted
+              ? TextStyle(
+                  decoration: TextDecoration.lineThrough,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )
+              : null,
+        ),
+        subtitle: Text(_taskSubtitle(task)),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          onPressed: () => _navigateToForm(task: task),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        onTap: () => _navigateToDetail(task),
+      ),
+    );
+  }
+
+  String _taskSubtitle(Task task) {
+    final parts = <String>[];
+    if (task.completionRuleType != CompletionRuleType.boolean) {
+      parts.add(_formatCompletionType(task.completionRuleType));
+    }
+    if (task.metricUnit != null) {
+      parts.add(task.metricUnit!);
+    }
+    if (task.metricTarget != null) {
+      parts.add('Target: ${task.metricTarget}');
+    }
+    return parts.isEmpty ? task.timeframe.name : parts.join(' · ');
+  }
+
+  String _formatCompletionType(CompletionRuleType type) {
+    switch (type) {
+      case CompletionRuleType.boolean:
+        return 'Yes/No';
+      case CompletionRuleType.countBased:
+        return 'Count';
+      case CompletionRuleType.metricBased:
+        return 'Metric';
+      case CompletionRuleType.streak:
+        return 'Streak';
+    }
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.checklist_outlined,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No steps yet',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Steps are actions that help you complete bucket list items.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () => _navigateToForm(),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Step'),
+            ),
+          ],
+        ),
       ),
     );
   }
