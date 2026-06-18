@@ -19,11 +19,22 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  Timeframe? _selectedTimeframe;
-  MetricType? _selectedMetricType;
-  String? _metricUnit;
-  double? _metricTarget;
+  String? _selectedCategory;
+  int? _targetYear;
   bool _autoCompleteEnabled = true;
+
+  static const _categories = [
+    'Travel',
+    'Adventure',
+    'Food & Drink',
+    'Health',
+    'Career',
+    'Learning',
+    'Creative',
+    'Social',
+    'Financial',
+    'Personal',
+  ];
 
   @override
   void initState() {
@@ -31,10 +42,8 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
     if (widget.goal != null) {
       _nameController.text = widget.goal!.name;
       _descriptionController.text = widget.goal!.description ?? '';
-      _selectedTimeframe = widget.goal!.timeframe;
-      _selectedMetricType = widget.goal!.metricType;
-      _metricUnit = widget.goal!.metricUnit;
-      _metricTarget = widget.goal!.metricTarget;
+      _selectedCategory = widget.goal!.category;
+      _targetYear = widget.goal!.targetDate?.year;
       _autoCompleteEnabled = widget.goal!.autoCompleteEnabled;
     }
   }
@@ -46,19 +55,81 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
     super.dispose();
   }
 
+  Future<void> _pickTargetYear() async {
+    final now = DateTime.now();
+    final firstYear = now.year;
+    final lastYear = now.year + 50;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Target Year'),
+          content: SizedBox(
+            width: 200,
+            height: 300,
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Column(
+                  children: [
+                    if (_targetYear != null)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _targetYear = null);
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Clear'),
+                      ),
+                    Expanded(
+                      child: ListWheelScrollView.useDelegate(
+                        itemExtent: 44,
+                        perspective: 0.003,
+                        physics: const FixedExtentScrollPhysics(),
+                        controller: FixedExtentScrollController(
+                          initialItem: (_targetYear ?? firstYear) - firstYear,
+                        ),
+                        onSelectedItemChanged: (index) {
+                          setState(() => _targetYear = firstYear + index);
+                        },
+                        childDelegate: ListWheelChildBuilderDelegate(
+                          childCount: lastYear - firstYear + 1,
+                          builder: (context, index) {
+                            final year = firstYear + index;
+                            return Center(
+                              child: Text(
+                                '$year',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Done'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _saveGoal() async {
     if (_formKey.currentState!.validate()) {
       final now = DateTime.now();
       final goal = Goal(
         id: widget.goal?.id ?? const Uuid().v4(),
-        name: _nameController.text,
+        name: _nameController.text.trim(),
         description: _descriptionController.text.isNotEmpty
-            ? _descriptionController.text
+            ? _descriptionController.text.trim()
             : null,
-        timeframe: _selectedTimeframe,
-        metricType: _selectedMetricType,
-        metricUnit: _metricUnit,
-        metricTarget: _metricTarget,
+        category: _selectedCategory,
+        targetDate: _targetYear != null ? DateTime(_targetYear!) : null,
         isManuallyCompleted: widget.goal?.isManuallyCompleted ?? false,
         autoCompleteEnabled: _autoCompleteEnabled,
         positionX: widget.goal?.positionX ?? 0.0,
@@ -76,14 +147,11 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
         } else {
           await repository.updateGoal(goal);
         }
-
-        if (mounted) {
-          Navigator.of(context).pop(true);
-        }
+        if (mounted) Navigator.of(context).pop(true);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error saving goal: $e')),
+            SnackBar(content: Text('Error saving: $e')),
           );
         }
       } finally {
@@ -94,9 +162,10 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.goal == null ? 'New Goal' : 'Edit Goal'),
+        title: Text(widget.goal == null ? 'New Bucket List Item' : 'Edit Item'),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -112,118 +181,78 @@ class _GoalFormScreenState extends State<GoalFormScreen> {
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Name',
+                labelText: 'What do you want to do?',
+                hintText: 'e.g. Hike the Appalachian Trail',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a name';
-                }
-                return null;
-              },
+              textCapitalization: TextCapitalization.sentences,
+              validator: (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Please enter a name' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
               decoration: const InputDecoration(
-                labelText: 'Description (optional)',
+                labelText: 'Notes (optional)',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<Timeframe?>(
-              initialValue: _selectedTimeframe,
-              decoration: const InputDecoration(
-                labelText: 'Timeframe (optional)',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('None'),
+            const SizedBox(height: 24),
+            Text('Category', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _categories.map((cat) {
+                final selected = _selectedCategory == cat;
+                return FilterChip(
+                  label: Text(cat),
+                  selected: selected,
+                  onSelected: (val) => setState(() =>
+                      _selectedCategory = val ? cat : null),
+                  selectedColor: colorScheme.primaryContainer,
+                  checkmarkColor: colorScheme.onPrimaryContainer,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Target Year', style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        _targetYear != null ? '$_targetYear' : 'No target set',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: _targetYear != null
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-                ...Timeframe.values.map((timeframe) {
-                  return DropdownMenuItem(
-                    value: timeframe,
-                    child: Text(timeframe.name.toUpperCase()),
-                  );
-                }),
+                OutlinedButton(
+                  onPressed: _pickTargetYear,
+                  child: Text(_targetYear != null ? 'Change' : 'Set Year'),
+                ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedTimeframe = value;
-                });
-              },
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<MetricType?>(
-              initialValue: _selectedMetricType,
-              decoration: const InputDecoration(
-                labelText: 'Metric Type (optional)',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('None'),
-                ),
-                ...MetricType.values.where((t) => t != MetricType.none).map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(type.name.toUpperCase()),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedMetricType = value;
-                  if (value == null) {
-                    _metricUnit = null;
-                    _metricTarget = null;
-                  }
-                });
-              },
-            ),
-            if (_selectedMetricType != null) ...[
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: 'Metric Unit (e.g., miles, minutes)',
-                  border: OutlineInputBorder(),
-                ),
-                initialValue: _metricUnit,
-                onChanged: (value) {
-                  _metricUnit = value.isNotEmpty ? value : null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: 'Target Value (optional)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                initialValue: _metricTarget?.toString(),
-                onChanged: (value) {
-                  _metricTarget = double.tryParse(value);
-                },
-              ),
-            ],
             const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 8),
             SwitchListTile(
               title: const Text('Auto-complete'),
               subtitle: const Text(
-                'Automatically mark goal as complete when all connected tasks are done',
+                'Mark as done automatically when all connected steps are completed',
               ),
               value: _autoCompleteEnabled,
-              onChanged: (value) {
-                setState(() {
-                  _autoCompleteEnabled = value;
-                });
-              },
+              onChanged: (value) => setState(() => _autoCompleteEnabled = value),
             ),
           ],
         ),

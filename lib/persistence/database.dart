@@ -42,6 +42,8 @@ class Goals extends Table {
   BoolColumn get autoCompleteEnabled => boolean().withDefault(const Constant(true))();
   RealColumn get positionX => real().withDefault(const Constant(0.0))();
   RealColumn get positionY => real().withDefault(const Constant(0.0))();
+  TextColumn get category => text().nullable()();
+  DateTimeColumn get targetDate => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -118,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -128,6 +130,11 @@ class AppDatabase extends _$AppDatabase {
           // Migration from schema v1 to v2: Add completion fields to Goals table
           await migrator.addColumn(goals, goals.isManuallyCompleted);
           await migrator.addColumn(goals, goals.autoCompleteEnabled);
+        }
+        if (from < 3) {
+          // Migration from schema v2 to v3: Add category and targetDate to Goals
+          await migrator.addColumn(goals, goals.category);
+          await migrator.addColumn(goals, goals.targetDate);
         }
       },
     );
