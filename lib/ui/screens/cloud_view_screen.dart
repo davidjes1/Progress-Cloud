@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../painters/cloud_painter.dart';
+import '../../domain/models/goal.dart';
+import '../../domain/models/task.dart';
+import '../../domain/models/list.dart';
+import '../../domain/models/enums.dart';
 import '../../persistence/database.dart' as db;
 import '../../persistence/goal_repository_impl.dart';
 import '../../persistence/task_repository_impl.dart';
@@ -7,6 +11,9 @@ import '../../persistence/list_repository_impl.dart';
 import '../../persistence/connection_repository_impl.dart';
 import 'goal_form_screen.dart';
 import 'list_form_screen.dart';
+import 'goal_detail_screen.dart';
+import 'task_detail_screen.dart';
+import 'list_detail_screen.dart';
 
 class CloudViewScreen extends StatefulWidget {
   const CloudViewScreen({super.key});
@@ -24,6 +31,12 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
   List<CloudNode> _nodes = [];
   List<CloudConnection> _connections = [];
   bool _isLoading = true;
+
+  // Maps for tap-to-navigate
+  Map<String, NodeType> _nodeTypes = {};
+  Map<String, Goal> _goalMap = {};
+  Map<String, Task> _taskMap = {};
+  Map<String, ProgressList> _listMap = {};
 
   @override
   void initState() {
@@ -47,6 +60,10 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
       final connections = await connectionRepo.getAllConnections();
 
       final List<CloudNode> nodes = [];
+      final Map<String, NodeType> nodeTypes = {};
+      final Map<String, Goal> goalMap = {};
+      final Map<String, Task> taskMap = {};
+      final Map<String, ProgressList> listMap = {};
 
       // Goals → circles, blue (large)
       for (int i = 0; i < goals.length; i++) {
@@ -64,6 +81,8 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
           shape: NodeShape.circle,
           size: 72,
         ));
+        nodeTypes[g.id] = NodeType.goal;
+        goalMap[g.id] = g;
       }
 
       // Tasks → squares, orange/green based on completion (medium)
@@ -82,6 +101,8 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
           shape: NodeShape.square,
           size: 56,
         ));
+        nodeTypes[t.id] = NodeType.task;
+        taskMap[t.id] = t;
       }
 
       // Lists → diamonds, purple (medium-large)
@@ -100,6 +121,8 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
           shape: NodeShape.diamond,
           size: 64,
         ));
+        nodeTypes[l.id] = NodeType.list;
+        listMap[l.id] = l;
       }
 
       // Build connections — only include ones where both nodes exist
@@ -119,6 +142,10 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
       setState(() {
         _nodes = nodes;
         _connections = cloudConnections;
+        _nodeTypes = nodeTypes;
+        _goalMap = goalMap;
+        _taskMap = taskMap;
+        _listMap = listMap;
         _isLoading = false;
       });
     } catch (e) {
@@ -143,6 +170,64 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
   String _truncate(String text, int maxChars) {
     if (text.length <= maxChars) return text;
     return '${text.substring(0, maxChars - 1)}…';
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    final screenSize = context.size;
+    if (screenSize == null) return;
+
+    // Convert screen tap position to canvas coordinates
+    final tapPos = details.localPosition;
+    final canvasX = (tapPos.dx - screenSize.width / 2 - _offset.dx) / _scale;
+    final canvasY = (tapPos.dy - screenSize.height / 2 - _offset.dy) / _scale;
+
+    // Find hit node (check center hit within half the node size)
+    for (final node in _nodes) {
+      final halfSize = node.size / 2;
+      if ((canvasX - node.position.dx).abs() < halfSize &&
+          (canvasY - node.position.dy).abs() < halfSize) {
+        _navigateToNode(node.id);
+        return;
+      }
+    }
+  }
+
+  void _navigateToNode(String id) {
+    final nodeType = _nodeTypes[id];
+    if (nodeType == null) return;
+
+    switch (nodeType) {
+      case NodeType.goal:
+        final goal = _goalMap[id];
+        if (goal == null) return;
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+              builder: (context) => GoalDetailScreen(goal: goal),
+            ))
+            .then((_) => _loadData());
+        break;
+      case NodeType.task:
+        final task = _taskMap[id];
+        if (task == null) return;
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+              builder: (context) => TaskDetailScreen(task: task),
+            ))
+            .then((_) => _loadData());
+        break;
+      case NodeType.list:
+        final list = _listMap[id];
+        if (list == null) return;
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+              builder: (context) => ListDetailScreen(list: list),
+            ))
+            .then((_) => _loadData());
+        break;
+      case NodeType.listItem:
+        // listItems are not shown in cloud view, no-op
+        break;
+    }
   }
 
   @override
@@ -204,6 +289,7 @@ class _CloudViewScreenState extends State<CloudViewScreen> {
         });
       },
       onScaleEnd: (_) => _lastFocalPoint = null,
+      onTapUp: _handleTapUp,
       child: CustomPaint(
         painter: CloudPainter(
           scale: _scale,

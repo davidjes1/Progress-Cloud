@@ -737,6 +737,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _targetDateMeta =
+      const VerificationMeta('targetDate');
+  @override
+  late final GeneratedColumn<DateTime> targetDate = GeneratedColumn<DateTime>(
+      'target_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -762,6 +774,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
         autoCompleteEnabled,
         positionX,
         positionY,
+        category,
+        targetDate,
         createdAt,
         updatedAt
       ];
@@ -834,6 +848,14 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
       context.handle(_positionYMeta,
           positionY.isAcceptableOrUnknown(data['position_y']!, _positionYMeta));
     }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    }
+    if (data.containsKey('target_date')) {
+      context.handle(_targetDateMeta,
+          targetDate.isAcceptableOrUnknown(data['target_date']!, _targetDateMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -877,6 +899,10 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalData> {
           .read(DriftSqlType.double, data['${effectivePrefix}position_x'])!,
       positionY: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}position_y'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category']),
+      targetDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}target_date']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -902,6 +928,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
   final bool autoCompleteEnabled;
   final double positionX;
   final double positionY;
+  final String? category;
+  final DateTime? targetDate;
   final DateTime createdAt;
   final DateTime updatedAt;
   const GoalData(
@@ -916,6 +944,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       required this.autoCompleteEnabled,
       required this.positionX,
       required this.positionY,
+      this.category,
+      this.targetDate,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -942,6 +972,12 @@ class GoalData extends DataClass implements Insertable<GoalData> {
     map['auto_complete_enabled'] = Variable<bool>(autoCompleteEnabled);
     map['position_x'] = Variable<double>(positionX);
     map['position_y'] = Variable<double>(positionY);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || targetDate != null) {
+      map['target_date'] = Variable<DateTime>(targetDate);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -970,6 +1006,12 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       autoCompleteEnabled: Value(autoCompleteEnabled),
       positionX: Value(positionX),
       positionY: Value(positionY),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      targetDate: targetDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetDate),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -992,6 +1034,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           serializer.fromJson<bool>(json['autoCompleteEnabled']),
       positionX: serializer.fromJson<double>(json['positionX']),
       positionY: serializer.fromJson<double>(json['positionY']),
+      category: serializer.fromJson<String?>(json['category']),
+      targetDate: serializer.fromJson<DateTime?>(json['targetDate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1011,6 +1055,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       'autoCompleteEnabled': serializer.toJson<bool>(autoCompleteEnabled),
       'positionX': serializer.toJson<double>(positionX),
       'positionY': serializer.toJson<double>(positionY),
+      'category': serializer.toJson<String?>(category),
+      'targetDate': serializer.toJson<DateTime?>(targetDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1028,6 +1074,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           bool? autoCompleteEnabled,
           double? positionX,
           double? positionY,
+          Value<String?> category = const Value.absent(),
+          Value<DateTime?> targetDate = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       GoalData(
@@ -1043,6 +1091,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
         autoCompleteEnabled: autoCompleteEnabled ?? this.autoCompleteEnabled,
         positionX: positionX ?? this.positionX,
         positionY: positionY ?? this.positionY,
+        category: category.present ? category.value : this.category,
+        targetDate: targetDate.present ? targetDate.value : this.targetDate,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1068,6 +1118,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           : this.autoCompleteEnabled,
       positionX: data.positionX.present ? data.positionX.value : this.positionX,
       positionY: data.positionY.present ? data.positionY.value : this.positionY,
+      category: data.category.present ? data.category.value : this.category,
+      targetDate: data.targetDate.present ? data.targetDate.value : this.targetDate,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1087,6 +1139,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           ..write('autoCompleteEnabled: $autoCompleteEnabled, ')
           ..write('positionX: $positionX, ')
           ..write('positionY: $positionY, ')
+          ..write('category: $category, ')
+          ..write('targetDate: $targetDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1094,7 +1148,7 @@ class GoalData extends DataClass implements Insertable<GoalData> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
       id,
       name,
       description,
@@ -1106,8 +1160,10 @@ class GoalData extends DataClass implements Insertable<GoalData> {
       autoCompleteEnabled,
       positionX,
       positionY,
+      category,
+      targetDate,
       createdAt,
-      updatedAt);
+      updatedAt]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1123,6 +1179,8 @@ class GoalData extends DataClass implements Insertable<GoalData> {
           other.autoCompleteEnabled == this.autoCompleteEnabled &&
           other.positionX == this.positionX &&
           other.positionY == this.positionY &&
+          other.category == this.category &&
+          other.targetDate == this.targetDate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1139,6 +1197,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
   final Value<bool> autoCompleteEnabled;
   final Value<double> positionX;
   final Value<double> positionY;
+  final Value<String?> category;
+  final Value<DateTime?> targetDate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1154,6 +1214,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     this.autoCompleteEnabled = const Value.absent(),
     this.positionX = const Value.absent(),
     this.positionY = const Value.absent(),
+    this.category = const Value.absent(),
+    this.targetDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1170,6 +1232,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     this.autoCompleteEnabled = const Value.absent(),
     this.positionX = const Value.absent(),
     this.positionY = const Value.absent(),
+    this.category = const Value.absent(),
+    this.targetDate = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1189,6 +1253,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     Expression<bool>? autoCompleteEnabled,
     Expression<double>? positionX,
     Expression<double>? positionY,
+    Expression<String>? category,
+    Expression<DateTime>? targetDate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1207,6 +1273,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
         'auto_complete_enabled': autoCompleteEnabled,
       if (positionX != null) 'position_x': positionX,
       if (positionY != null) 'position_y': positionY,
+      if (category != null) 'category': category,
+      if (targetDate != null) 'target_date': targetDate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1225,6 +1293,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
       Value<bool>? autoCompleteEnabled,
       Value<double>? positionX,
       Value<double>? positionY,
+      Value<String?>? category,
+      Value<DateTime?>? targetDate,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -1240,6 +1310,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
       autoCompleteEnabled: autoCompleteEnabled ?? this.autoCompleteEnabled,
       positionX: positionX ?? this.positionX,
       positionY: positionY ?? this.positionY,
+      category: category ?? this.category,
+      targetDate: targetDate ?? this.targetDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1282,6 +1354,12 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
     if (positionY.present) {
       map['position_y'] = Variable<double>(positionY.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (targetDate.present) {
+      map['target_date'] = Variable<DateTime>(targetDate.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1308,6 +1386,8 @@ class GoalsCompanion extends UpdateCompanion<GoalData> {
           ..write('autoCompleteEnabled: $autoCompleteEnabled, ')
           ..write('positionX: $positionX, ')
           ..write('positionY: $positionY, ')
+          ..write('category: $category, ')
+          ..write('targetDate: $targetDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')

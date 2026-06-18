@@ -20,6 +20,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
   Map<String, double> _goalProgress = {};
   Map<String, int> _goalTaskCount = {};
   bool _isLoading = true;
+  String? _activeCategory;
 
   @override
   void initState() {
@@ -52,9 +53,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
           var completedCount = 0;
           for (final conn in taskConns) {
             final task = await taskRepo.getTaskById(conn.toNodeId);
-            if (task != null && task.isCompleted) {
-              completedCount++;
-            }
+            if (task != null && task.isCompleted) completedCount++;
           }
           progress[goal.id] = completedCount / taskConns.length;
         }
@@ -78,20 +77,68 @@ class _BucketListScreenState extends State<BucketListScreen> {
     }
   }
 
+  Future<void> _toggleComplete(Goal goal) async {
+    final wasComplete = _isGoalComplete(goal);
+    final database = db.AppDatabase();
+    final repo = GoalRepositoryImpl(database);
+
+    try {
+      final updated = goal.copyWith(
+        isManuallyCompleted: !wasComplete,
+        // When manually completing, disable auto-complete so the flag sticks
+        autoCompleteEnabled: wasComplete ? goal.autoCompleteEnabled : false,
+        updatedAt: DateTime.now(),
+      );
+      await repo.updateGoal(updated);
+      await _loadGoals();
+
+      if (!wasComplete && mounted) {
+        _showCelebration(goal);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating item: $e')),
+        );
+      }
+    } finally {
+      await database.close();
+    }
+  }
+
+  void _showCelebration(Goal goal) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'celebration',
+      barrierColor: Colors.black38,
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (_, __, ___) => _CelebrationDialog(goalName: goal.name),
+      transitionBuilder: (_, animation, __, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.elasticOut),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+    );
+
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+      }
+    });
+  }
+
   Future<void> _navigateToForm({Goal? goal}) async {
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => GoalFormScreen(goal: goal),
-      ),
+      MaterialPageRoute(builder: (context) => GoalFormScreen(goal: goal)),
     );
     if (result == true) _loadGoals();
   }
 
   Future<void> _navigateToDetail(Goal goal) async {
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => GoalDetailScreen(goal: goal),
-      ),
+      MaterialPageRoute(builder: (context) => GoalDetailScreen(goal: goal)),
     );
     if (result == true) _loadGoals();
   }
@@ -102,7 +149,6 @@ class _BucketListScreenState extends State<BucketListScreen> {
     final connectionRepo = ConnectionRepositoryImpl(database);
 
     try {
-      // Delete associated connections first
       final connections = await connectionRepo.getConnectionsForNode(goal.id);
       for (final conn in connections) {
         await connectionRepo.deleteConnection(conn.id);
@@ -124,13 +170,28 @@ class _BucketListScreenState extends State<BucketListScreen> {
     if (!goal.autoCompleteEnabled) return goal.isManuallyCompleted;
     final count = _goalTaskCount[goal.id] ?? 0;
     if (count == 0) return goal.isManuallyCompleted;
-    final progress = _goalProgress[goal.id] ?? 0;
-    return progress >= 1.0;
+    return (_goalProgress[goal.id] ?? 0) >= 1.0;
+  }
+
+  List<String> get _allCategories {
+    final cats = _goals
+        .where((g) => g.category != null)
+        .map((g) => g.category!)
+        .toSet()
+        .toList()
+      ..sort();
+    return cats;
+  }
+
+  List<Goal> get _filteredGoals {
+    if (_activeCategory == null) return _goals;
+    return _goals.where((g) => g.category == _activeCategory).toList();
   }
 
   List<Goal> get _sortedGoals {
-    final incomplete = _goals.where((g) => !_isGoalComplete(g)).toList();
-    final complete = _goals.where((g) => _isGoalComplete(g)).toList();
+    final goals = _filteredGoals;
+    final incomplete = goals.where((g) => !_isGoalComplete(g)).toList();
+    final complete = goals.where((g) => _isGoalComplete(g)).toList();
     return [...incomplete, ...complete];
   }
 
@@ -138,6 +199,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
   Widget build(BuildContext context) {
     final sorted = _sortedGoals;
     final completedCount = _goals.where(_isGoalComplete).length;
+    final categories = _allCategories;
 
     return Scaffold(
       appBar: AppBar(
@@ -151,17 +213,25 @@ class _BucketListScreenState extends State<BucketListScreen> {
               : Column(
                   children: [
                     _buildStatsBar(completedCount),
+                    if (categories.isNotEmpty) _buildCategoryFilter(categories),
                     Expanded(
                       child: RefreshIndicator(
                         onRefresh: _loadGoals,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                          itemCount: sorted.length,
-                          itemBuilder: (context, index) {
-                            final goal = sorted[index];
-                            return _buildGoalCard(goal);
-                          },
-                        ),
+                        child: sorted.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No items in "$_activeCategory"',
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                                itemCount: sorted.length,
+                                itemBuilder: (context, index) =>
+                                    _buildGoalCard(sorted[index]),
+                              ),
                       ),
                     ),
                   ],
@@ -188,9 +258,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
             children: [
               Text(
                 '$completedCount of $total completed',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
               Text(
@@ -213,11 +281,44 @@ class _BucketListScreenState extends State<BucketListScreen> {
     );
   }
 
+  Widget _buildCategoryFilter(List<String> categories) {
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            FilterChip(
+              label: const Text('All'),
+              selected: _activeCategory == null,
+              onSelected: (_) => setState(() => _activeCategory = null),
+            ),
+            const SizedBox(width: 8),
+            ...categories.map((cat) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(cat),
+                    selected: _activeCategory == cat,
+                    onSelected: (_) => setState(() =>
+                        _activeCategory = _activeCategory == cat ? null : cat),
+                  ),
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildGoalCard(Goal goal) {
     final isComplete = _isGoalComplete(goal);
     final taskCount = _goalTaskCount[goal.id] ?? 0;
     final progress = _goalProgress[goal.id];
     final colorScheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+    final isOverdue = goal.targetDate != null &&
+        goal.targetDate!.year < now.year &&
+        !isComplete;
 
     return Dismissible(
       key: Key(goal.id),
@@ -239,26 +340,24 @@ class _BucketListScreenState extends State<BucketListScreen> {
           ],
         ),
       ),
-      confirmDismiss: (direction) async {
-        return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Item'),
-            content: Text('Remove "${goal.name}" from your bucket list?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        );
-      },
+      confirmDismiss: (_) async => await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Item'),
+          content: Text('Remove "${goal.name}" from your bucket list?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ),
       onDismissed: (_) => _deleteGoal(goal),
       child: Card(
         margin: const EdgeInsets.only(bottom: 10),
@@ -269,9 +368,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
               ? BorderSide(color: Colors.green.shade300, width: 1.5)
               : BorderSide.none,
         ),
-        color: isComplete
-            ? Colors.green.withOpacity(0.05)
-            : colorScheme.surface,
+        color: isComplete ? Colors.green.withOpacity(0.05) : colorScheme.surface,
         child: InkWell(
           onTap: () => _navigateToDetail(goal),
           borderRadius: BorderRadius.circular(12),
@@ -283,16 +380,13 @@ class _BucketListScreenState extends State<BucketListScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Completion icon
                     GestureDetector(
-                      onTap: () => _navigateToDetail(goal),
+                      onTap: () => _toggleComplete(goal),
                       child: Icon(
                         isComplete
                             ? Icons.check_circle_rounded
                             : Icons.radio_button_unchecked_rounded,
-                        color: isComplete
-                            ? Colors.green
-                            : colorScheme.onSurfaceVariant,
+                        color: isComplete ? Colors.green : colorScheme.onSurfaceVariant,
                         size: 26,
                       ),
                     ),
@@ -303,13 +397,8 @@ class _BucketListScreenState extends State<BucketListScreen> {
                         children: [
                           Text(
                             goal.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  decoration: isComplete
-                                      ? TextDecoration.lineThrough
-                                      : null,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  decoration: isComplete ? TextDecoration.lineThrough : null,
                                   color: isComplete
                                       ? colorScheme.onSurfaceVariant
                                       : colorScheme.onSurface,
@@ -322,10 +411,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
                               goal.description!,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
                             ),
@@ -333,7 +419,6 @@ class _BucketListScreenState extends State<BucketListScreen> {
                         ],
                       ),
                     ),
-                    // Edit button
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       onPressed: () => _navigateToForm(goal: goal),
@@ -343,7 +428,64 @@ class _BucketListScreenState extends State<BucketListScreen> {
                     ),
                   ],
                 ),
-                // Progress section
+                // Metadata row: category + target year
+                if (goal.category != null || goal.targetDate != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      if (goal.category != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            goal.category!,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSecondaryContainer,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (goal.targetDate != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isOverdue
+                                ? Colors.orange.shade100
+                                : colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isOverdue
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.calendar_today_outlined,
+                                size: 11,
+                                color: isOverdue
+                                    ? Colors.orange.shade700
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                '${goal.targetDate!.year}',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: isOverdue
+                                          ? Colors.orange.shade700
+                                          : colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                // Progress bar for items with steps
                 if (taskCount > 0) ...[
                   const SizedBox(height: 12),
                   Row(
@@ -353,8 +495,7 @@ class _BucketListScreenState extends State<BucketListScreen> {
                           value: progress ?? 0,
                           minHeight: 4,
                           borderRadius: BorderRadius.circular(2),
-                          backgroundColor:
-                              colorScheme.surfaceContainerHighest,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isComplete ? Colors.green : colorScheme.primary,
                           ),
@@ -375,25 +516,6 @@ class _BucketListScreenState extends State<BucketListScreen> {
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
-                  ),
-                ] else if (goal.timeframe != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 12,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        goal.timeframe!.name[0].toUpperCase() +
-                            goal.timeframe!.name.substring(1),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
                   ),
                 ],
               ],
@@ -437,6 +559,95 @@ class _BucketListScreenState extends State<BucketListScreen> {
               label: const Text('Add First Item'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CelebrationDialog extends StatefulWidget {
+  final String goalName;
+  const _CelebrationDialog({required this.goalName});
+
+  @override
+  State<_CelebrationDialog> createState() => _CelebrationDialogState();
+}
+
+class _CelebrationDialogState extends State<_CelebrationDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _bounceAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _bounceAnimation = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 40),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 24,
+                spreadRadius: 4,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ScaleTransition(
+                scale: _bounceAnimation,
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.green,
+                  size: 72,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Checked off!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.goalName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              const Text('\u{1F389}', style: TextStyle(fontSize: 28)),
+            ],
+          ),
         ),
       ),
     );
